@@ -108,3 +108,44 @@ export const ads = sqliteTable("ads", {
     .notNull()
     .default(sql`(unixepoch())`),
 });
+
+// EAV pattern per PLAN.md §6 — deliberately NOT a `jsonb` column on `ads`,
+// despite the plan mentioning that as an alternative: jsonb has no SQLite
+// equivalent, and portability across the two schema files is the whole point
+// of the v1.3 decision. `options` holds a JSON-serialized string array for
+// type: "enum"; parsed/validated by Zod at the app layer, not the DB layer.
+export const categoryAttributes = sqliteTable(
+  "category_attributes",
+  {
+    id: text("id").primaryKey(),
+    categoryId: text("category_id").notNull(),
+    key: text("key").notNull(),
+    label: text("label").notNull(),
+    type: text("type").notNull(),
+    options: text("options"),
+    isRequired: integer("is_required", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (table) => [
+    unique("category_attributes_category_id_key_unique").on(
+      table.categoryId,
+      table.key,
+    ),
+  ],
+);
+
+export const adAttributeValues = sqliteTable("ad_attribute_values", {
+  id: text("id").primaryKey(),
+  adId: text("ad_id").notNull(),
+  categoryAttributeId: text("category_attribute_id").notNull(),
+  value: text("value").notNull(),
+});
+
+export const adImages = sqliteTable("ad_images", {
+  id: text("id").primaryKey(),
+  adId: text("ad_id").notNull(),
+  cloudinaryPublicId: text("cloudinary_public_id").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+});

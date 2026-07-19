@@ -14,7 +14,8 @@
     "db:push:sqlite": "drizzle-kit push --config=drizzle.config.sqlite.ts",
     "db:studio:sqlite": "drizzle-kit studio --config=drizzle.config.sqlite.ts",
     "db:generate:pg": "drizzle-kit generate --config=drizzle.config.postgres.ts",
-    "db:migrate:pg": "drizzle-kit migrate --config=drizzle.config.postgres.ts"
+    "db:migrate:pg": "drizzle-kit migrate --config=drizzle.config.postgres.ts",
+    "db:seed": "tsx scripts/seed.mts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -63,6 +64,7 @@
     "prettier": "^3.9.5",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.1",
     "typescript": "^5"
   }
 }
