@@ -44,6 +44,33 @@ export const locations = pgTable("locations", {
   name: text("name").notNull(),
 });
 
+export const userPhoneNumbers = pgTable("user_phone_numbers", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  phoneE164: text("phone_e164").notNull(),
+  isVerified: boolean("is_verified").notNull().default(false),
+  isWhatsappEnabled: boolean("is_whatsapp_enabled").notNull().default(false),
+  isHidden: boolean("is_hidden").notNull().default(false),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
+
+// `target` is a phone (E.164) or email, `otp_hash` is never the raw code — see PLAN.md §5.4.
+export const otpCodes = pgTable("otp_codes", {
+  id: text("id").primaryKey(),
+  target: text("target").notNull(),
+  otpHash: text("otp_hash").notNull(),
+  purpose: text("purpose").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
+
 export const ads = pgTable("ads", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),

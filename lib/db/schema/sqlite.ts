@@ -38,6 +38,37 @@ export const locations = sqliteTable("locations", {
   name: text("name").notNull(),
 });
 
+export const userPhoneNumbers = sqliteTable("user_phone_numbers", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  phoneE164: text("phone_e164").notNull(),
+  isVerified: integer("is_verified", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  isWhatsappEnabled: integer("is_whatsapp_enabled", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  isHidden: integer("is_hidden", { mode: "boolean" }).notNull().default(false),
+  verifiedAt: integer("verified_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// `target` is a phone (E.164) or email, `otp_hash` is never the raw code — see PLAN.md §5.4.
+export const otpCodes = sqliteTable("otp_codes", {
+  id: text("id").primaryKey(),
+  target: text("target").notNull(),
+  otpHash: text("otp_hash").notNull(),
+  purpose: text("purpose").notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  consumedAt: integer("consumed_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
 export const ads = sqliteTable("ads", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
