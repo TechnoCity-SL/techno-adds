@@ -1,15 +1,31 @@
 import { NextResponse } from "next/server";
 import { createUploadSignature } from "@/lib/cloudinary/upload";
 import { uploadSignRequestSchema } from "@/lib/validation/cloudinary";
+import { createClient } from "@/lib/supabase/server";
+import { cloudinarySignLimiter } from "@/lib/rate-limit/cloudinary";
+import { checkLimit } from "@/lib/rate-limit";
 
 /**
- * TODO before Phase 2 (post-ad photo upload) ships: this route currently has
- * no auth check and no rate limit. It's safe as bare infrastructure today
- * (nothing links to it yet), but per CLAUDE.md rules #4 and #7 it MUST gain
- * both before any real upload flow calls it — an unauthenticated, unlimited
- * signature endpoint is a storage-abuse vector. Tracked in PLAN.md Phase 0 status.
+ * Auth + rate limit closed here (2026-07-19) now that the post-ad photo upload
+ * flow actually calls this route — this was a deliberate, tracked gap since
+ * Phase 0 (see PLAN.md Phase 0 status), not an oversight.
  */
 export async function POST(request: Request) {
+  const supabase = await createClient();
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !authData.user) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  const limit = await checkLimit(cloudinarySignLimiter, authData.user.id);
+  if (!limit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Try again later." },
+      { status: 429 },
+    );
+  }
+
   const body = await request.json().catch(() => ({}));
   const parsed = uploadSignRequestSchema.safeParse(body);
 

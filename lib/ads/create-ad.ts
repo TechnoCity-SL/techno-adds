@@ -7,6 +7,7 @@ import { db, schema } from "@/lib/db/postgres-client";
 // (see PLAN.md §4.1 "Auth-keyed data needs Postgres, not SQLite").
 
 export class InvalidCategoryError extends Error {}
+export class InvalidLocationError extends Error {}
 
 export class InvalidAttributesError extends Error {
   issues: string[];
@@ -26,6 +27,7 @@ export interface CreateAdParams {
   isNegotiable: boolean;
   condition: string;
   attributes: Record<string, string>;
+  images: string[];
 }
 
 export async function createAd(params: CreateAdParams): Promise<string> {
@@ -35,6 +37,14 @@ export async function createAd(params: CreateAdParams): Promise<string> {
     .where(eq(schema.categories.id, params.categoryId));
   if (!category) {
     throw new InvalidCategoryError(`Unknown category: ${params.categoryId}`);
+  }
+
+  const [location] = await db
+    .select()
+    .from(schema.locations)
+    .where(eq(schema.locations.id, params.locationId));
+  if (!location) {
+    throw new InvalidLocationError(`Unknown location: ${params.locationId}`);
   }
 
   const attributeDefs = await db
@@ -97,6 +107,15 @@ export async function createAd(params: CreateAdParams): Promise<string> {
         adId,
         categoryAttributeId: def.id,
         value,
+      });
+    }
+
+    for (const [index, publicId] of params.images.entries()) {
+      await tx.insert(schema.adImages).values({
+        id: randomUUID(),
+        adId,
+        cloudinaryPublicId: publicId,
+        sortOrder: index,
       });
     }
   });

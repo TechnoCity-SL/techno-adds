@@ -4,6 +4,7 @@ import { createAdSchema } from "@/lib/validation/ads";
 import {
   createAd,
   InvalidCategoryError,
+  InvalidLocationError,
   InvalidAttributesError,
 } from "@/lib/ads/create-ad";
 import { postAdLimiter } from "@/lib/rate-limit/ads";
@@ -39,7 +40,10 @@ export async function POST(request: Request) {
     const adId = await createAd({ userId: authData.user.id, ...parsed.data });
     return NextResponse.json({ id: adId, status: "draft" }, { status: 201 });
   } catch (error) {
-    if (error instanceof InvalidCategoryError) {
+    if (
+      error instanceof InvalidCategoryError ||
+      error instanceof InvalidLocationError
+    ) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
     if (error instanceof InvalidAttributesError) {

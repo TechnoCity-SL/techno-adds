@@ -9,4 +9,7 @@ export const createAdSchema = z.object({
   isNegotiable: z.boolean().default(false),
   condition: z.enum(["new", "used"]),
   attributes: z.record(z.string(), z.string()).default({}),
+  // Cloudinary public_ids, already uploaded client-side via /api/cloudinary/sign
+  // before this request — cap of 5 matches PLAN.md §3 MVP scope ("up to 5 photos").
+  images: z.array(z.string().min(1)).max(5).default([]),
 });
