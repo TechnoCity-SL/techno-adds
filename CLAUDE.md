@@ -35,6 +35,7 @@ This file is read by Claude Code at the start of every session in this repo. It 
 11. **No user-generated content rendered as raw HTML.** Ad titles, descriptions, and chat messages are always rendered as escaped text (or through a sanitizer if any rich text is ever introduced) — never `dangerouslySetInnerHTML` on user input.
 12. **Every payment state transition is server-verified, never client-trusted.** PayHere success is only recorded after verifying the signed server-to-server notify/webhook payload. A client-side redirect to a "success" URL is informational only and must never itself mark an order as paid.
 13. **Sinhala/Tamil readiness.** Even if English-only at MVP, keep user-facing copy in a strings/i18n layer (not hardcoded inline) so Sinhala/Tamil can be added later without a rewrite (ikman supports both — expect this to become a competitive requirement).
+14. **Never leave `SET ROLE` / `set_config('request.jwt.claims', ...)` dangling on a pooled Postgres connection.** Confirmed by direct reproduction (see `PLAN.md` §4.1, "Pooler gotcha"): Supabase's transaction-mode pooler (Supavisor, port 6543) does not reset session state between reuses of a pooled backend connection, so an uncaught error after a role switch leaks that role into whatever runs next on that connection. Any code that impersonates a role (RLS test scripts, admin tooling) must reset it in a `finally` block, unconditionally.
 
 ## Definition of done for any feature
 
