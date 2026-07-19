@@ -1,5 +1,11 @@
 import { sql } from "drizzle-orm";
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import {
+  sqliteTable,
+  text,
+  integer,
+  real,
+  unique,
+} from "drizzle-orm/sqlite-core";
 
 /**
  * Local-dev schema (SQLite via better-sqlite3).
@@ -38,22 +44,33 @@ export const locations = sqliteTable("locations", {
   name: text("name").notNull(),
 });
 
-export const userPhoneNumbers = sqliteTable("user_phone_numbers", {
-  id: text("id").primaryKey(),
-  userId: text("user_id").notNull(),
-  phoneE164: text("phone_e164").notNull(),
-  isVerified: integer("is_verified", { mode: "boolean" })
-    .notNull()
-    .default(false),
-  isWhatsappEnabled: integer("is_whatsapp_enabled", { mode: "boolean" })
-    .notNull()
-    .default(false),
-  isHidden: integer("is_hidden", { mode: "boolean" }).notNull().default(false),
-  verifiedAt: integer("verified_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`),
-});
+export const userPhoneNumbers = sqliteTable(
+  "user_phone_numbers",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    phoneE164: text("phone_e164").notNull(),
+    isVerified: integer("is_verified", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    isWhatsappEnabled: integer("is_whatsapp_enabled", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    isHidden: integer("is_hidden", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    verifiedAt: integer("verified_at", { mode: "timestamp" }),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => [
+    unique("user_phone_numbers_user_id_phone_e164_unique").on(
+      table.userId,
+      table.phoneE164,
+    ),
+  ],
+);
 
 // `target` is a phone (E.164) or email, `otp_hash` is never the raw code — see PLAN.md §5.4.
 export const otpCodes = sqliteTable("otp_codes", {

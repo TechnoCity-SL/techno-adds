@@ -29,6 +29,41 @@
       "when": 1784468110695,
       "tag": "0003_phone_otp_rls_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784470111905,
+      "tag": "0004_auth_users_sync_trigger",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784470853433,
+      "tag": "0005_faithful_blazing_skull",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784471044142,
+      "tag": "0006_users_auth_fk",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784471525109,
+      "tag": "0007_wonderful_human_robot",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784472095981,
+      "tag": "0008_faulty_human_fly",
+      "breakpoints": true
     }
   ]
 }
