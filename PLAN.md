@@ -1,9 +1,33 @@
 # TechnoAds — End-to-End 360° Plan
-*(Brand: **TechnoAds**, by **Technocity** — Sri Lanka classifieds marketplace)*
+
+_(Brand: **TechnoAds**, by **Technocity** — Sri Lanka classifieds marketplace)_
 
 This document is written so you can hand it directly to Claude Code (running in Cursor's terminal) as the source of truth for the build. It covers strategy, architecture, data model, auth/OTP, payments, mobile-first UX, security, and a phased execution roadmap.
 
 **v1.1 changelog:** added paid listing tiers (bank transfer + PayHere gateway), switched SMS/OTP provider to HUTCH, locked launch categories to Vehicles + Property + Techno/Gadgets, added dedicated mobile-responsiveness and security sections.
+
+**v1.2 changelog (2026-07-19):** added the Build Status & Progress Log section below, and a corresponding living-document rule in `CLAUDE.md` — this plan is now updated continuously as phases progress or decisions change, not just written once.
+
+**v1.3 changelog (2026-07-19):** decided **local development uses SQLite (via Drizzle ORM), production stays Postgres via Supabase** — see the new "Local development environment" note under §4.1. This is a deliberate deviation from a single-database story: it trades away local testability of Postgres-only features (RLS, `jsonb`+GIN, `tsvector`, Realtime) for a lighter, Docker-free local setup. Mitigations recorded below; revisit if the RLS-testing gap causes a production incident.
+
+---
+
+## Build Status & Progress Log
+
+This table is the single source of truth for what's actually been built vs. merely planned. Update it every time plan-relevant work happens — see the "Keeping PLAN.md current" rule in `CLAUDE.md`. Status-only edits here don't need a version bump above; edits to the plan's actual content (scope/decisions/sequencing) do.
+
+| Phase   | Description                                                                               | Status      | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------- | ----------------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 0 | Foundations (repo scaffold, Supabase/Vercel/Cloudinary projects, design tokens)           | In progress | 2026-07-19: Next.js 15 (App Router, TS strict) + Tailwind + ShadCN/UI scaffolded at repo root; ESLint/Prettier + Husky pre-commit (lint-staged + typecheck) wired and verified; atomic-design folders (`/components/{atoms,molecules,organisms,templates}`) and `/lib/{supabase,cloudinary,otp,payments,validation,rate-limit}` + `/emails` created; distinct brand color (blue-indigo, not ikman's green) set in `app/globals.css`. Local DB decided as SQLite via Drizzle ORM (see v1.3 changelog + §4.1) — `lib/db/schema/{sqlite,postgres}.ts` (mirrored, core tables: users/categories/locations/ads) + `lib/db/sqlite-client.ts` + `lib/db/postgres-client.ts` (unexercised until Supabase exists) built and push/insert/query round-trip verified against local SQLite. Still pending (needs your accounts/credentials): Supabase project + migrations, Vercel project link, Cloudinary account + signed-upload route, `technoads.lk` domain lock. |
+| Phase 1 | Auth & OTP (Google/Facebook/email + HUTCH phone OTP)                                      | Not started |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Phase 2 | Categories & Post-Ad flow (Vehicles/Property/Techno-Gadgets schemas, mobile-first wizard) | Not started |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Phase 3 | Browse, Search, Ad Detail (ISR listing pages, FTS search, structured data)                | Not started |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Phase 4 | Chat & Notifications (Realtime chat, saved search digests, report flow)                   | Not started |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Phase 5 | Admin/Moderation panel                                                                    | Not started |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Phase 6 | Monetization: Top Ad / Super Ad + payments (PayHere + bank transfer)                      | Not started |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Phase 7 | AI-assisted posting (vision-model attribute extraction)                                   | Not started |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Phase 8 | Security hardening, performance, SEO, load testing, launch polish                         | Not started |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Phase 9 | Soft launch → seed supply → public launch                                                 | Not started |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 ---
 
@@ -12,6 +36,7 @@ This document is written so you can hand it directly to Claude Code (running in 
 Going through your 20 screenshots (homepage, category pages, listing pages, post-ad flow, login modal, account settings), here's the anatomy of a dominant SL classifieds site:
 
 **Structure**
+
 - Flat top-level categories (Vehicles, Property, Mobiles, Electronics, Home & Garden, Services, Business & Industry, Jobs, Animals, Hobby/Sport/Kids, Fashion & Beauty, Education, Essentials, Other, Agriculture, Work Overseas) each with counts, then nested subcategories in a left sidebar filter.
 - Every listing page (Vehicles, Property, Mobiles, Electronics...) follows the same template: breadcrumb → filters (location, price, type of poster, promoted listings, sort) → 2 "featured/verified seller" cards → 1 large "FEATURED" ad banner → infinite list of standard cards → native ad units interleaved every ~8-10 listings → a "Sell it on ikman" CTA card injected mid-feed → pagination.
 - Card anatomy: thumbnail, title, 2-3 key specs (bedrooms/bathrooms, km/fuel/transmission, storage/RAM), badge row (Member / Verified Seller), location + category, price in green, relative timestamp, small icons (boosted/urgent/featured crown).
@@ -21,7 +46,7 @@ Going through your 20 screenshots (homepage, category pages, listing pages, post
 - Post-ad flow (2026 version) has gone **AI-first**: "Post with AI assistance" — pick location → upload photos → AI analyzes photos → auto-fills a review form → you confirm. Manual mode still exists as fallback. This is a meaningful UX bar to match or beat.
 - Multiple phone numbers per ad listing, WhatsApp-enabled first number, "Hide Phone Number(s)" privacy toggle, image limits (5 free + paid extra 10 for a flat fee) — pricing lever for later.
 
-**Implication for you:** you are not just building a CRUD app, you're building a template-driven catalog engine (many categories × many attribute schemas), a trust layer (OTP, verified seller, member badges), a lightweight ad-monetization surface (even if free at launch, build the *slots* now so turning on payments later doesn't require re-architecture), and an AI-assisted posting flow, because that is now the category standard, not a differentiator.
+**Implication for you:** you are not just building a CRUD app, you're building a template-driven catalog engine (many categories × many attribute schemas), a trust layer (OTP, verified seller, member badges), a lightweight ad-monetization surface (even if free at launch, build the _slots_ now so turning on payments later doesn't require re-architecture), and an AI-assisted posting flow, because that is now the category standard, not a differentiator.
 
 ---
 
@@ -31,14 +56,14 @@ Be honest with yourself: you cannot out-scale ikman.lk's 250k+ live ads or its S
 
 **Recommended wedge strategy — pick 1-2, don't try to fight on all fronts at once:**
 
-| Option | What it means | Why it can work |
-|---|---|---|
-| **Vertical-first launch** | Launch fully polished in *one* category first (e.g. Vehicles, or Property, or Mobile Phones) with a genuinely better experience (better filters, verified mileage/VIN checks for vehicles, floor-plan uploads for property, price-history graphs), then expand horizontally once you have density | Concentrates your free-user-acquisition budget and content/SEO effort into one defensible niche instead of spreading thin across 16 categories |
-| **Zero-fee wedge** | You've already decided: 100% free for a year, no boosts, no banners for sellers, cleaner UI with no gambling/betting ads (note: ikman's screenshots are full of betting-site banners — many Sri Lankan users find these distasteful) | Direct incentive for price-sensitive sellers (students, small businesses) to cross-post or switch entirely |
-| **Trust-first wedge** | Every listing phone-verified (you already require this), every seller has a public trust score, scam-report visibility, ID-verified "Pro Seller" tier for dealers | ikman has "Verified Seller" but it's opaque; visible trust signals + fast scam reporting can win the safety-conscious segment |
-| **WhatsApp-native wedge** | Since most SL buyers already contact sellers via WhatsApp, build first-class "Chat on WhatsApp" + in-app chat with photo/price negotiation, push notifications, and a Progressive Web App that installs like an app without needing the App Store | Removes friction vs. competitors who bury WhatsApp behind "reveal number" clicks |
+| Option                    | What it means                                                                                                                                                                                                                                                                                     | Why it can work                                                                                                                                |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Vertical-first launch** | Launch fully polished in _one_ category first (e.g. Vehicles, or Property, or Mobile Phones) with a genuinely better experience (better filters, verified mileage/VIN checks for vehicles, floor-plan uploads for property, price-history graphs), then expand horizontally once you have density | Concentrates your free-user-acquisition budget and content/SEO effort into one defensible niche instead of spreading thin across 16 categories |
+| **Zero-fee wedge**        | You've already decided: 100% free for a year, no boosts, no banners for sellers, cleaner UI with no gambling/betting ads (note: ikman's screenshots are full of betting-site banners — many Sri Lankan users find these distasteful)                                                              | Direct incentive for price-sensitive sellers (students, small businesses) to cross-post or switch entirely                                     |
+| **Trust-first wedge**     | Every listing phone-verified (you already require this), every seller has a public trust score, scam-report visibility, ID-verified "Pro Seller" tier for dealers                                                                                                                                 | ikman has "Verified Seller" but it's opaque; visible trust signals + fast scam reporting can win the safety-conscious segment                  |
+| **WhatsApp-native wedge** | Since most SL buyers already contact sellers via WhatsApp, build first-class "Chat on WhatsApp" + in-app chat with photo/price negotiation, push notifications, and a Progressive Web App that installs like an app without needing the App Store                                                 | Removes friction vs. competitors who bury WhatsApp behind "reveal number" clicks                                                               |
 
-**Confirmed launch verticals: Vehicles + Property + Techno/Gadgets** (computers, laptops, mobile phones, and other electronics). This is a good combination: Vehicles and Property are the two highest-value, highest-intent categories (ikman itself runs sister brands MotorGuide.lk / PropertyGuide.lk for exactly these), while Techno/Gadgets gives you the highest posting *volume* and daily engagement (people list/browse phones and laptops far more frequently than cars or houses), which keeps the site feeling active while the higher-value categories build up trust and lead quality. It's also a natural fit for a company called **Technocity** — "TechnoAds" pairing tech-savviness with gadgets as a category is good brand coherence. Roll out the rest of the categories only once you have organic traffic and a moderation pipeline that can handle scale.
+**Confirmed launch verticals: Vehicles + Property + Techno/Gadgets** (computers, laptops, mobile phones, and other electronics). This is a good combination: Vehicles and Property are the two highest-value, highest-intent categories (ikman itself runs sister brands MotorGuide.lk / PropertyGuide.lk for exactly these), while Techno/Gadgets gives you the highest posting _volume_ and daily engagement (people list/browse phones and laptops far more frequently than cars or houses), which keeps the site feeling active while the higher-value categories build up trust and lead quality. It's also a natural fit for a company called **Technocity** — "TechnoAds" pairing tech-savviness with gadgets as a category is good brand coherence. Roll out the rest of the categories only once you have organic traffic and a moderation pipeline that can handle scale.
 
 **Growth-loop marketing plan (0-12 months):**
 
@@ -48,7 +73,7 @@ Be honest with yourself: you cannot out-scale ikman.lk's 250k+ live ads or its S
 4. **Referral incentive.** "Invite a seller, both get X free boosted listing days" (cost you nothing at launch since boosts are already free, but sets up the mechanic for when you introduce paid boosts).
 5. **Local SEO content.** Auto-generate location + category landing pages with real aggregate data ("142 cars for sale in Kandy today, average price Rs. X") — cheap, scalable content that ikman also does (see "Frequently asked questions" and "Show more" sections in your screenshots) — replicate and improve it.
 6. **No-junk-ads promise as a marketing message.** "The classifieds site without the casino ads" can genuinely be a headline differentiator in Sri Lanka right now.
-7. **Retention via saved searches + push/WhatsApp alerts.** "New Toyota Aqua listed in Colombo under Rs 5M" — this is a feature ikman has (Save search) but you can make the *notification* faster/richer (WhatsApp instead of email-only).
+7. **Retention via saved searches + push/WhatsApp alerts.** "New Toyota Aqua listed in Colombo under Rs 5M" — this is a feature ikman has (Save search) but you can make the _notification_ faster/richer (WhatsApp instead of email-only).
 
 ---
 
@@ -57,6 +82,7 @@ Be honest with yourself: you cannot out-scale ikman.lk's 250k+ live ads or its S
 Be ruthless about MVP scope — this determines how many weeks of Claude Code sessions you need.
 
 **MVP (Launch, ~9-12 weeks with AI-assisted dev)**
+
 - Auth: Google, Facebook, Email+password, Phone+OTP (mandatory phone verification for anyone posting an ad regardless of which login method they used)
 - Post an ad: manual flow first (condition, brand/model or category-specific attributes, price, description, up to 5 photos via Cloudinary, location) — **fully mobile/tablet-optimized from day 1, not desktop-first with mobile as an afterthought** (see §13)
 - **3 launch categories fully built: Vehicles, Property, Techno/Gadgets** (computers, laptops, mobile phones, accessories) with proper attribute schemas; other categories present but simplified ("Other" generic form)
@@ -67,9 +93,10 @@ Be ruthless about MVP scope — this determines how many weeks of Claude Code se
 - Admin moderation panel (approve/reject/flag ads, ban users)
 - Report/flag ad or user
 - SEO fundamentals: server-rendered/ISR pages, sitemap.xml, structured data (schema.org Product/Offer)
-- **Paid listing tiers built into the schema and UI from day 1** ("Top Ad" / "Super Ad" / boosted placement — see §12), even though the *free* baseline ad-posting flow is what's active for the first year. Building the paid slots now avoids a re-architecture later.
+- **Paid listing tiers built into the schema and UI from day 1** ("Top Ad" / "Super Ad" / boosted placement — see §12), even though the _free_ baseline ad-posting flow is what's active for the first year. Building the paid slots now avoids a re-architecture later.
 
 **Phase 2 (Months 3-5)**
+
 - AI-assisted "post with photos → auto-filled form" flow (this is now table stakes per the screenshots)
 - Saved search notifications (email + WhatsApp)
 - Trust score / verified seller badges, ID verification for Pro Sellers
@@ -79,6 +106,7 @@ Be ruthless about MVP scope — this determines how many weeks of Claude Code se
 - **Activate paid Top Ad / Super Ad purchases** via bank transfer + PayHere (schema/UI already exists from MVP — this phase turns the payment flow "on")
 
 **Phase 3 (Months 6-12)**
+
 - Membership tiers for dealers/businesses (dedicated storefront page, bulk posting, analytics)
 - Native mobile apps (if PWA adoption data justifies it) or continued PWA investment
 - Banner ad inventory for direct/programmatic advertisers (self-serve or house ads)
@@ -89,23 +117,33 @@ Be ruthless about MVP scope — this determines how many weeks of Claude Code se
 
 ### 4.1 Stack decisions (with reasoning)
 
-| Layer | Choice | Why |
-|---|---|---|
-| Frontend framework | **Next.js 15 (App Router)** | SSR/ISR is non-negotiable for a classifieds SEO play; React Server Components reduce client JS for listing-heavy pages; native Vercel integration |
-| UI kit | **ShadCN/UI + Tailwind** | Matches your requirement; accessible, unstyled primitives you fully own (no vendor lock-in), fast to theme |
-| Hosting (frontend) | **Vercel** | As specified; edge network good for SL users (Vercel has edge PoPs in the region); seamless Next.js ISR/On-Demand Revalidation |
-| Database | **Postgres via Supabase** *(recommended over raw Neon — see below)* | Get Postgres + Auth + Storage + Row-Level-Security + Realtime + Edge Functions in one platform, which matters a lot for a solo/small team shipping fast with Claude Code |
-| Media storage/CDN | **Cloudinary** | As specified — handles resize/transform/lazy-format (webp/avif) automatically, critical for image-heavy listing pages on mobile networks in SL |
-| Search | **Postgres full-text search (`tsvector`) at MVP → Meilisearch or Typesense self-hosted (or Algolia) once traffic grows** | Don't over-engineer search on day 1; Postgres FTS + trigram indexes (`pg_trgm`) covers MVP fine; swap in a dedicated search engine only when you feel the pain (>~200k listings or slow facet filtering) |
-| Caching / rate limiting | **Upstash Redis** (serverless, pairs naturally with Vercel) | For OTP rate-limiting, hot category page caching, session/view-count throttling |
-| Background jobs / queues | **Supabase Edge Functions + `pg_cron`**, or **Trigger.dev / Inngest** for anything more complex (OTP sending, notification digests, image moderation callbacks) | Keeps async work (SMS sending, thumbnail generation callbacks, digest emails) off the request path |
-| SMS/OTP gateway | **HUTCH SMS API** (confirmed) | Local telco-backed gateway, API-based — drop your API credentials into `/lib/otp/providers/hutch.ts` as a swappable adapter (see §5.2) once you share the API docs/credentials. Build the adapter interface generically (`sendSms(to, message): Promise<{ messageId, status }>`) so a second provider can be added as failover later without touching call sites |
-| Auth | **Custom auth layer using Supabase Auth (Google/Facebook/email) + a custom Phone-OTP table/flow backed by HUTCH** | Supabase's built-in phone-auth provider list doesn't include HUTCH, so phone OTP is a small custom implementation (see §5) sitting alongside Supabase's native OAuth/email auth |
-| Payments | **Bank transfer (manual/semi-automated reconciliation) + PayHere** (card/mobile wallet gateway) | PayHere is the standard Sri Lankan payment gateway for cards + local wallets (eZ Cash/mCash-style rails) and integrates cleanly with a Next.js checkout flow; bank transfer stays available for sellers/dealers who prefer it (common in SL B2B) — see §12 for the full flow |
-| Monitoring/observability | **Sentry (errors) + Vercel Analytics + Better Stack/Logtail (logs) + Supabase built-in dashboard (DB)** | Cheap-to-free at your stage, upgrade later |
-| Transactional email | **Resend** (pairs beautifully with Next.js/React Email) | For OTP-fallback, ad-approval, payment receipts, saved-search digests |
+| Layer                    | Choice                                                                                                                                                          | Why                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend framework       | **Next.js 15 (App Router)**                                                                                                                                     | SSR/ISR is non-negotiable for a classifieds SEO play; React Server Components reduce client JS for listing-heavy pages; native Vercel integration                                                                                                                                                                                                                |
+| UI kit                   | **ShadCN/UI + Tailwind**                                                                                                                                        | Matches your requirement; accessible, unstyled primitives you fully own (no vendor lock-in), fast to theme                                                                                                                                                                                                                                                       |
+| Hosting (frontend)       | **Vercel**                                                                                                                                                      | As specified; edge network good for SL users (Vercel has edge PoPs in the region); seamless Next.js ISR/On-Demand Revalidation                                                                                                                                                                                                                                   |
+| Database                 | **Postgres via Supabase in production; SQLite locally via Drizzle ORM** _(see "Local development environment" below)_                                           | Get Postgres + Auth + Storage + Row-Level-Security + Realtime + Edge Functions in one platform in prod; SQLite locally trades away local RLS/FTS/Realtime testing for a lighter, Docker-free dev setup — a deliberate, documented tradeoff, not an oversight                                                                                                     |
+| Media storage/CDN        | **Cloudinary**                                                                                                                                                  | As specified — handles resize/transform/lazy-format (webp/avif) automatically, critical for image-heavy listing pages on mobile networks in SL                                                                                                                                                                                                                   |
+| Search                   | **Postgres full-text search (`tsvector`) at MVP → Meilisearch or Typesense self-hosted (or Algolia) once traffic grows**                                        | Don't over-engineer search on day 1; Postgres FTS + trigram indexes (`pg_trgm`) covers MVP fine; swap in a dedicated search engine only when you feel the pain (>~200k listings or slow facet filtering)                                                                                                                                                         |
+| Caching / rate limiting  | **Upstash Redis** (serverless, pairs naturally with Vercel)                                                                                                     | For OTP rate-limiting, hot category page caching, session/view-count throttling                                                                                                                                                                                                                                                                                  |
+| Background jobs / queues | **Supabase Edge Functions + `pg_cron`**, or **Trigger.dev / Inngest** for anything more complex (OTP sending, notification digests, image moderation callbacks) | Keeps async work (SMS sending, thumbnail generation callbacks, digest emails) off the request path                                                                                                                                                                                                                                                               |
+| SMS/OTP gateway          | **HUTCH SMS API** (confirmed)                                                                                                                                   | Local telco-backed gateway, API-based — drop your API credentials into `/lib/otp/providers/hutch.ts` as a swappable adapter (see §5.2) once you share the API docs/credentials. Build the adapter interface generically (`sendSms(to, message): Promise<{ messageId, status }>`) so a second provider can be added as failover later without touching call sites |
+| Auth                     | **Custom auth layer using Supabase Auth (Google/Facebook/email) + a custom Phone-OTP table/flow backed by HUTCH**                                               | Supabase's built-in phone-auth provider list doesn't include HUTCH, so phone OTP is a small custom implementation (see §5) sitting alongside Supabase's native OAuth/email auth                                                                                                                                                                                  |
+| Payments                 | **Bank transfer (manual/semi-automated reconciliation) + PayHere** (card/mobile wallet gateway)                                                                 | PayHere is the standard Sri Lankan payment gateway for cards + local wallets (eZ Cash/mCash-style rails) and integrates cleanly with a Next.js checkout flow; bank transfer stays available for sellers/dealers who prefer it (common in SL B2B) — see §12 for the full flow                                                                                     |
+| Monitoring/observability | **Sentry (errors) + Vercel Analytics + Better Stack/Logtail (logs) + Supabase built-in dashboard (DB)**                                                         | Cheap-to-free at your stage, upgrade later                                                                                                                                                                                                                                                                                                                       |
+| Transactional email      | **Resend** (pairs beautifully with Next.js/React Email)                                                                                                         | For OTP-fallback, ad-approval, payment receipts, saved-search digests                                                                                                                                                                                                                                                                                            |
 
-**Why Supabase over Neon specifically for you:** Neon is *just* serverless Postgres (excellent product, branching, autoscale-to-zero) but you'd then need to separately stand up auth (NextAuth/Clerk), storage, and realtime. Supabase gives you all of that under one roof with Row Level Security enforced at the database layer (very useful for a marketplace where "a user can only edit their own ad" needs to be bulletproof, not just enforced in application code). Given you're a lean team using Claude Code to move fast, fewer moving pieces = fewer integration bugs. If down the road you outgrow Supabase's Postgres tier limits, you can always migrate the raw Postgres database (it's still just Postgres) — this isn't a one-way door.
+**Why Supabase over Neon specifically for you:** Neon is _just_ serverless Postgres (excellent product, branching, autoscale-to-zero) but you'd then need to separately stand up auth (NextAuth/Clerk), storage, and realtime. Supabase gives you all of that under one roof with Row Level Security enforced at the database layer (very useful for a marketplace where "a user can only edit their own ad" needs to be bulletproof, not just enforced in application code). Given you're a lean team using Claude Code to move fast, fewer moving pieces = fewer integration bugs. If down the road you outgrow Supabase's Postgres tier limits, you can always migrate the raw Postgres database (it's still just Postgres) — this isn't a one-way door.
+
+**Local development environment (decided 2026-07-19): SQLite locally, Postgres/Supabase in production.**
+
+- **ORM: Drizzle ORM**, chosen because it has first-class drivers for both `better-sqlite3` (local) and `postgres`/Supabase (prod), and pairs with `drizzle-zod` to auto-derive Zod schemas — consistent with the "Zod everywhere" rule in `CLAUDE.md`. Note: Drizzle's table builders are dialect-specific (`sqliteTable` vs `pgTable`), so this is **not** one literal shared schema file — it's two mirrored schema files (`/lib/db/schema/sqlite.ts`, `/lib/db/schema/postgres.ts`) kept in lockstep by hand, column for column. That manual-sync cost is the real, accepted price of this decision — call it out explicitly in any PR that changes one without the other.
+- **Schema portability discipline:** write table/column definitions to the lowest common denominator where possible (e.g. store JSON-ish data as `text` and parse/validate with Zod, rather than relying on native `jsonb`) so the two mirrored schemas stay structurally identical.
+- **Known gap — accepted tradeoff, not silently ignored:** SQLite has no Row Level Security, no `jsonb`/GIN indexes, no `tsvector`/`pg_trgm`, and no Realtime/logical replication. This means:
+  - **RLS policies still ship as real Postgres migrations for Supabase**, but they can only be exercised against a real Postgres instance — **a shared Supabase staging project**, not local SQLite. Any PR touching RLS-covered tables must be verified against staging before merge; this is now part of Definition of Done for those PRs (see `CLAUDE.md`).
+  - **Full-text search**: implement a thin search abstraction (`/lib/search`) with a SQLite `LIKE`/FTS5-based dev fallback and the real `tsvector`/`pg_trgm` implementation for prod — expect search _ranking behavior_ to only be truly verified on staging.
+  - **Chat/Realtime (Phase 4)**: local dev for Realtime-dependent features will need to point at the shared Supabase staging project rather than the local SQLite DB, since there's no local equivalent.
+- **Revisit trigger:** if this gap ever causes a bug that reaches production (an RLS hole, a search regression, a Realtime issue not caught locally), that's the signal to switch local dev to Supabase CLI's local Postgres stack instead — flag it here and re-open this decision rather than patching around it silently.
 
 ### 4.2 High-level architecture
 
@@ -180,6 +218,7 @@ You specified: Google / Facebook / Email / Phone login, and **mandatory OTP veri
 - Regardless of which method a user signs up with, **before they can publish their first ad, force a phone-verification step** if they haven't already got one on file — this is your core trust/anti-spam mechanism and matches your requirement exactly.
 
 ### 5.4 Security details to bake in from day 1
+
 - OTP codes: 6 digits, 5-minute expiry, single-use, hashed at rest, max 5 verify attempts per code, max ~3 send-requests per phone per hour, exponential backoff on repeated failures.
 - Never expose whether a phone number/email is already registered (avoid user enumeration) beyond what's functionally necessary.
 - Log OTP send events with cost tracking (you're paying per SMS — build a lightweight internal dashboard early: OTP sent, OTP verified, verify-rate; a low verify-rate is often the first sign of SMS delivery problems or a bot attack).
@@ -229,6 +268,7 @@ bank_transfer_proofs                    -- id, order_id, uploaded_receipt_url (C
 ```
 
 Notes:
+
 - `category_attributes` + `ad_attribute_values` is the EAV (entity-attribute-value) pattern that lets Vehicles have `mileage/fuel_type/transmission` while Property has `bedrooms/bathrooms/land_size` without a different table per category. This mirrors how ikman clearly structures its category-specific filter sidebars. Use a `jsonb` column on `ads` (`attributes jsonb`) as a pragmatic alternative to a full EAV table if you want faster iteration — index the jsonb with GIN indexes on the fields you filter by most.
 - `ads.status` state machine matters a lot for moderation: `draft → pending_review → active → (expired | rejected | removed | sold)`.
 - Enforce **Row Level Security** in Supabase: a user can `select` any `active` ad, but can only `update/delete` their own ads; only users with an `is_moderator` claim can update `status` to `rejected`.
@@ -271,6 +311,7 @@ Use **zod** end-to-end (form validation client-side + API validation server-side
 ## 8. Trust, safety & moderation
 
 Since ads are free (higher spam risk than a paid model), build these from day one, not as a "later":
+
 - Mandatory phone OTP before first publish (already covered)
 - Auto-moderation heuristics: block ads with repeated URLs/phone-number spam in description, banned-word list, duplicate-image hash detection (helps catch scam re-posts), price-outlier detection (e.g., "iPhone 17 Pro for Rs. 5,000" flagged for manual review)
 - Manual review queue for first-N ads from any new account, then trust-based auto-publish after a track record
@@ -295,12 +336,12 @@ Baseline ad posting stays **100% free for the first year**, but paid placement i
 
 **Suggested rate card (tune after competitor benchmarking):**
 
-| Tier | Effect | Typical duration |
-|---|---|---|
-| Standard (free) | Normal position in chronological/relevance sort | Until expiry (e.g. 30/60 days) |
-| **Top Ad** | Pinned above standard results within its category/location for the purchase duration, small "Top" badge | 3 / 7 / 15 days |
-| **Super Ad** | Top Ad placement **+** shown in the homepage/category "Featured" carousel **+** larger card with more photos visible **+** crown badge | 7 / 15 / 30 days |
-| (Future) Bump/refresh | One-time "renew to top of chronological list" without full Top Ad pricing | Instant, one-time |
+| Tier                  | Effect                                                                                                                                 | Typical duration               |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Standard (free)       | Normal position in chronological/relevance sort                                                                                        | Until expiry (e.g. 30/60 days) |
+| **Top Ad**            | Pinned above standard results within its category/location for the purchase duration, small "Top" badge                                | 3 / 7 / 15 days                |
+| **Super Ad**          | Top Ad placement **+** shown in the homepage/category "Featured" carousel **+** larger card with more photos visible **+** crown badge | 7 / 15 / 30 days               |
+| (Future) Bump/refresh | One-time "renew to top of chronological list" without full Top Ad pricing                                                              | Instant, one-time              |
 
 **Payment flow:**
 
@@ -319,7 +360,7 @@ Baseline ad posting stays **100% free for the first year**, but paid placement i
 
 ## 11. Mobile-first & responsive requirements
 
-You flagged this correctly — in the Sri Lankan classifieds market, the large majority of both browsing *and posting* traffic is mobile. Treat mobile as the primary design target, not a breakpoint you retrofit.
+You flagged this correctly — in the Sri Lankan classifieds market, the large majority of both browsing _and posting_ traffic is mobile. Treat mobile as the primary design target, not a breakpoint you retrofit.
 
 - **Design mobile-first, not desktop-first-then-shrink.** Build Tailwind layouts starting from the smallest breakpoint and add complexity upward (`sm:`/`md:`/`lg:` as progressive enhancement), not the reverse. This is a process discipline to put directly in `CLAUDE.md` so every component Claude Code generates follows it by default.
 - **The post-ad flow is the highest-risk surface for mobile UX** — long forms, photo uploads, and category-attribute pickers are all fiddly on a phone. Concretely:
@@ -339,34 +380,39 @@ You flagged this correctly — in the Sri Lankan classifieds market, the large m
 Since this is a public-facing site handling phone numbers, OTPs, chat, and (soon) payments, security needs to be a first-class workstream, not a checklist at the end. Bake these into `CLAUDE.md` as non-negotiable rules for every PR.
 
 **Application security**
-- Server-side authorization on every mutation (never trust client-submitted `user_id`/`ad_id` ownership — always re-check against the authenticated session), reinforced by Supabase **Row Level Security** as a second layer of defense (defense in depth: app-layer checks *and* DB-layer policies).
+
+- Server-side authorization on every mutation (never trust client-submitted `user_id`/`ad_id` ownership — always re-check against the authenticated session), reinforced by Supabase **Row Level Security** as a second layer of defense (defense in depth: app-layer checks _and_ DB-layer policies).
 - Strict `zod` input validation on every API route (already planned in §7) — treat it as a security control, not just a UX nicety.
 - CSRF protection on state-changing routes; SameSite cookies for session tokens.
 - Rate limiting (Upstash Redis) on: OTP send, login attempts, ad posting, chat messages, search API, report submissions — protects both cost (SMS spend) and abuse surface.
 - File upload hardening: validate MIME type + magic bytes (not just file extension) before accepting uploads, enforce max file size, strip EXIF/GPS metadata from uploaded photos before storing (privacy — sellers shouldn't accidentally leak their home GPS coordinates via a photo), scan for malware if budget allows (Cloudinary has some built-in moderation add-ons).
 - Content sanitization: escape/sanitize all user-generated text (ad titles/descriptions, chat messages) to prevent stored XSS; never render raw HTML from user input.
-- Secrets management: all API keys (HUTCH, PayHere, Cloudinary, Supabase service role key, Resend) live in Vercel/Supabase encrypted environment variables — **never in the repo**, and the Supabase *service role* key in particular must only ever be used in server-side code, never shipped to the client.
+- Secrets management: all API keys (HUTCH, PayHere, Cloudinary, Supabase service role key, Resend) live in Vercel/Supabase encrypted environment variables — **never in the repo**, and the Supabase _service role_ key in particular must only ever be used in server-side code, never shipped to the client.
 - Dependency hygiene: Dependabot/`npm audit` in CI, pin lockfile, review before merging major version bumps.
 - Security headers: CSP, `X-Frame-Options`/`frame-ancestors`, `X-Content-Type-Options: nosniff`, HSTS — set via `next.config.js` headers or a middleware layer.
 
 **Payment security (§10)**
+
 - Never handle raw card data yourself — PayHere's hosted checkout/SDK means card numbers never touch your servers (PCI-DSS scope stays with PayHere, not you).
 - Verify PayHere webhook signatures server-side before trusting any "payment succeeded" event; treat client-side redirects as informational only.
 - Log all payment state transitions immutably (`payment_transactions.raw_payload`) for dispute resolution and audit.
 
 **Account/OTP security** (expands on §5.4)
+
 - OTP hashing at rest, short expiry, attempt caps, per-phone and per-IP rate limits, CAPTCHA in front of OTP-send.
 - Session security: short-lived JWTs + refresh tokens (Supabase Auth default), ability to revoke sessions from "Settings," logout-everywhere option.
 - Admin/moderator accounts: require a stronger auth bar (consider mandatory 2FA for anyone with `is_moderator`/finance roles), and log every moderation/finance action (`moderation_actions` table already in the schema) for accountability.
 
 **Data protection & compliance**
+
 - Align data handling (phone numbers, emails, chat content, bank transfer receipts) with Sri Lanka's **Personal Data Protection Act (PDPA)** — publish a clear Privacy Policy, support account/data deletion requests (you already have "Delete account" in scope per the ikman screenshot pattern), and avoid retaining OTP codes or full receipt images longer than necessary.
 - Encrypt sensitive data at rest where the platform supports it (Supabase Postgres storage is encrypted at rest by default; ensure backups are too).
 - Principle of least privilege on every Supabase service role / API key — scope keys narrowly, rotate periodically.
 
 **Infrastructure security**
+
 - Staging environment mirrors production but with sanitized/synthetic data — never test against real user PII.
-- Automated backups (Supabase point-in-time recovery on paid tier) + a documented, *tested* restore procedure — an untested backup is not a backup.
+- Automated backups (Supabase point-in-time recovery on paid tier) + a documented, _tested_ restore procedure — an untested backup is not a backup.
 - Uptime/error alerting (Sentry + Vercel + Supabase status) with a real on-call path even if that's just "you get a text," so incidents (especially payment or OTP-sending outages) are caught fast.
 - Basic WAF/bot-mitigation at the edge (Vercel's firewall features, or Cloudflare in front if you want more control) especially in front of the OTP-send and search endpoints, which are the two most likely targets for cost-abuse or scraping.
 
@@ -377,6 +423,7 @@ Since this is a public-facing site handling phone numbers, OTPs, chat, and (soon
 Give Claude Code one phase at a time as a focused session/task, with this doc as shared context (drop this file at the repo root as `PLAN.md` and reference it in your `CLAUDE.md`/system prompt for the project). Suggested `CLAUDE.md` project rules: enforce atomic design folder structure, zod validation everywhere, RLS-first Supabase queries, no `any` types, colocate tests, conventional commits.
 
 **Phase 0 — Foundations (3-5 days)**
+
 - Repo scaffold: Next.js 15 + TS + Tailwind + ShadCN init, ESLint/Prettier, Husky pre-commit
 - Supabase project, initial migrations (users, categories, locations, ads core tables), RLS policies
 - Vercel project linked, preview deployments on PR
@@ -384,40 +431,49 @@ Give Claude Code one phase at a time as a focused session/task, with this doc as
 - Design tokens / theme in Tailwind config (own visual identity — do **not** reuse ikman's green; pick a distinct brand palette)
 
 **Phase 1 — Auth & OTP (1 week)**
+
 - Supabase Auth: Google + Facebook + email/magic-link wired end-to-end
 - Custom phone OTP send/verify endpoints + **HUTCH SMS API** integration (adapter pattern, credentials pending from you) + Redis rate limiting + Turnstile captcha
 - Account settings page (multi phone numbers, verify/hide toggle)
 
 **Phase 2 — Categories & Post-Ad flow (2-2.5 weeks)**
+
 - Seed `categories`/`category_attributes` for **Vehicles + Property + Techno/Gadgets** (+ a generic "Other" schema)
 - **Mobile-first** multi-step post-ad wizard with zod validation, Cloudinary multi-image upload (camera capture + compression), location picker — built and tested on real Android devices per §11, not just desktop
 - Draft → pending review → publish state machine
 
 **Phase 3 — Browse, Search, Ad Detail (1.5-2 weeks)**
+
 - ISR listing pages with category/location routing, filter sidebar (attribute-driven), sort, pagination — fully responsive grid/list views
 - Postgres FTS + trigram search bar
 - Ad detail page with structured data, phone reveal (click-to-call/WhatsApp), favorite button
 
 **Phase 4 — Chat & Notifications (1 week)**
+
 - In-app chat (Supabase Realtime), saved search + email digest via Resend
 - Report ad/user flow
 
 **Phase 5 — Admin/Moderation panel (1 week)**
+
 - Moderator dashboard: pending queue, ban/unban, category management, reported content, finance/bank-transfer review queue (from §10)
 
 **Phase 6 — Monetization: Top Ad / Super Ad + payments (1.5 weeks)**
+
 - `listing_products`/`orders`/`payment_transactions`/`bank_transfer_proofs` tables + admin rate-card management
 - PayHere checkout integration + signed webhook handling; bank-transfer upload + manual review flow
 - Ad card/sort logic updated to respect `listing_tier`, expiry cron job
 
 **Phase 7 — AI-assisted posting (parity feature, 1-1.5 weeks)**
+
 - Photo upload → vision-model attribute extraction (this can literally call the Claude API with vision input on the uploaded Cloudinary images) → pre-filled review form, mobile-optimized end to end
 
 **Phase 8 — Security hardening, performance, SEO, load testing, launch polish (1.5-2 weeks)**
+
 - Full pass against the §12 security checklist (headers, rate limits, upload hardening, RLS audit), PayHere merchant go-live checklist
 - Sitemap/robots, Core Web Vitals pass on real mobile devices, k6 load test, error monitoring wired, legal pages (Terms, Privacy Policy — important since you're collecting phone numbers/OTP data and payment receipts; align with Sri Lanka's Personal Data Protection Act)
 
 **Phase 9 — Soft launch → seed supply → public launch**
+
 - Seed listings across all 3 launch categories, onboard first dealer partners, then execute the marketing plan in §2
 
 Total: roughly 12-15 weeks of focused build to a genuinely launch-ready MVP with three strong categories and monetization plumbing in place, run solo/small-team with AI pair-programming. Remaining categories and Phase-2/3 features (from §3) layer on after real user feedback.
