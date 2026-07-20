@@ -5,6 +5,7 @@ import {
   integer,
   real,
   unique,
+  primaryKey,
 } from "drizzle-orm/sqlite-core";
 
 /**
@@ -22,6 +23,10 @@ export const users = sqliteTable("users", {
   isProSeller: integer("is_pro_seller", { mode: "boolean" })
     .notNull()
     .default(false),
+  isModerator: integer("is_moderator", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  isBanned: integer("is_banned", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -98,7 +103,7 @@ export const ads = sqliteTable("ads", {
     .notNull()
     .default(false),
   condition: text("condition").notNull(),
-  status: text("status").notNull().default("draft"),
+  status: text("status").notNull().default("pending_review"),
   listingTier: text("listing_tier").notNull().default("standard"),
   tierExpiresAt: integer("tier_expires_at", { mode: "timestamp" }),
   viewsCount: integer("views_count").notNull().default(0),
@@ -148,4 +153,79 @@ export const adImages = sqliteTable("ad_images", {
   adId: text("ad_id").notNull(),
   cloudinaryPublicId: text("cloudinary_public_id").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const favorites = sqliteTable(
+  "favorites",
+  {
+    userId: text("user_id").notNull(),
+    adId: text("ad_id").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.adId] })],
+);
+
+export const moderationActions = sqliteTable("moderation_actions", {
+  id: text("id").primaryKey(),
+  moderatorId: text("moderator_id").notNull(),
+  targetType: text("target_type").notNull(),
+  targetId: text("target_id").notNull(),
+  action: text("action").notNull(),
+  reason: text("reason"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export const conversations = sqliteTable(
+  "conversations",
+  {
+    id: text("id").primaryKey(),
+    adId: text("ad_id").notNull(),
+    buyerId: text("buyer_id").notNull(),
+    sellerId: text("seller_id").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => [
+    unique("conversations_ad_id_buyer_id_unique").on(table.adId, table.buyerId),
+  ],
+);
+
+export const messages = sqliteTable("messages", {
+  id: text("id").primaryKey(),
+  conversationId: text("conversation_id").notNull(),
+  senderId: text("sender_id").notNull(),
+  content: text("content").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export const savedSearches = sqliteTable("saved_searches", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  queryParams: text("query_params").notNull(),
+  notifyEnabled: integer("notify_enabled", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  lastNotifiedAt: integer("last_notified_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export const reports = sqliteTable("reports", {
+  id: text("id").primaryKey(),
+  reporterUserId: text("reporter_user_id").notNull(),
+  targetType: text("target_type").notNull(),
+  targetId: text("target_id").notNull(),
+  reason: text("reason").notNull(),
+  status: text("status").notNull().default("pending"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
 });

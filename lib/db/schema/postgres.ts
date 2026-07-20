@@ -8,6 +8,7 @@ import {
   timestamp,
   uuid,
   unique,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -32,6 +33,8 @@ export const users = pgTable("users", {
   locationId: text("location_id"),
   trustScore: integer("trust_score").notNull().default(0),
   isProSeller: boolean("is_pro_seller").notNull().default(false),
+  isModerator: boolean("is_moderator").notNull().default(false),
+  isBanned: boolean("is_banned").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
@@ -102,7 +105,7 @@ export const ads = pgTable("ads", {
   price: real("price").notNull(),
   isNegotiable: boolean("is_negotiable").notNull().default(false),
   condition: text("condition").notNull(),
-  status: text("status").notNull().default("draft"),
+  status: text("status").notNull().default("pending_review"),
   listingTier: text("listing_tier").notNull().default("standard"),
   tierExpiresAt: timestamp("tier_expires_at", { withTimezone: true }),
   viewsCount: integer("views_count").notNull().default(0),
@@ -158,4 +161,102 @@ export const adImages = pgTable("ad_images", {
     .references(() => ads.id, { onDelete: "cascade" }),
   cloudinaryPublicId: text("cloudinary_public_id").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const favorites = pgTable(
+  "favorites",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    adId: text("ad_id")
+      .notNull()
+      .references(() => ads.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.adId] })],
+);
+
+// `targetId` is polymorphic (an ads.id or a users.id depending on `targetType`),
+// so deliberately no FK on it — only `moderatorId` (always a real user) gets one.
+export const moderationActions = pgTable("moderation_actions", {
+  id: text("id").primaryKey(),
+  moderatorId: uuid("moderator_id")
+    .notNull()
+    .references(() => users.id),
+  targetType: text("target_type").notNull(),
+  targetId: text("target_id").notNull(),
+  action: text("action").notNull(),
+  reason: text("reason"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
+
+export const conversations = pgTable(
+  "conversations",
+  {
+    id: text("id").primaryKey(),
+    adId: text("ad_id")
+      .notNull()
+      .references(() => ads.id, { onDelete: "cascade" }),
+    buyerId: uuid("buyer_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sellerId: uuid("seller_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (table) => [
+    unique("conversations_ad_id_buyer_id_unique").on(table.adId, table.buyerId),
+  ],
+);
+
+export const messages = pgTable("messages", {
+  id: text("id").primaryKey(),
+  conversationId: text("conversation_id")
+    .notNull()
+    .references(() => conversations.id, { onDelete: "cascade" }),
+  senderId: uuid("sender_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
+
+// `queryParams` is a JSON-serialized string, not jsonb — same portability
+// reasoning as category_attributes.options (PLAN.md §4.1/v1.3).
+export const savedSearches = pgTable("saved_searches", {
+  id: text("id").primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  queryParams: text("query_params").notNull(),
+  notifyEnabled: boolean("notify_enabled").notNull().default(true),
+  lastNotifiedAt: timestamp("last_notified_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
+
+// `targetId` polymorphic (ads.id or users.id), same reasoning as moderation_actions.
+export const reports = pgTable("reports", {
+  id: text("id").primaryKey(),
+  reporterUserId: uuid("reporter_user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  targetType: text("target_type").notNull(),
+  targetId: text("target_id").notNull(),
+  reason: text("reason").notNull(),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
 });

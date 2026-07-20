@@ -8,6 +8,7 @@ import { db, schema } from "@/lib/db/postgres-client";
 
 export class InvalidCategoryError extends Error {}
 export class InvalidLocationError extends Error {}
+export class UserBannedError extends Error {}
 
 export class InvalidAttributesError extends Error {
   issues: string[];
@@ -31,6 +32,16 @@ export interface CreateAdParams {
 }
 
 export async function createAd(params: CreateAdParams): Promise<string> {
+  const [user] = await db
+    .select({ isBanned: schema.users.isBanned })
+    .from(schema.users)
+    .where(eq(schema.users.id, params.userId));
+  if (user?.isBanned) {
+    // A ban that only pulls down existing ads but doesn't stop new ones is
+    // toothless — this is the other half of banUser()'s enforcement.
+    throw new UserBannedError("This account has been banned from posting ads.");
+  }
+
   const [category] = await db
     .select()
     .from(schema.categories)
@@ -96,7 +107,13 @@ export async function createAd(params: CreateAdParams): Promise<string> {
       price: params.price,
       isNegotiable: params.isNegotiable,
       condition: params.condition,
-      status: "draft",
+      // Not "draft": the wizard's submit step IS the final creation call (no
+      // separate save-draft UX exists), so the ad is genuinely awaiting
+      // moderation the moment it's created — matches PLAN.md's draft ->
+      // pending_review -> active state machine and gives Phase 5's
+      // moderation queue something real to review. Found/fixed while
+      // building Phase 5: "draft" status had no path forward, ever.
+      status: "pending_review",
     });
 
     for (const def of attributeDefs) {

@@ -1,0 +1,1 @@
+ALTER TABLE "ads" ALTER COLUMN "status" SET DEFAULT 'pending_review';

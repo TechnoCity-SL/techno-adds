@@ -6,6 +6,7 @@ import {
   InvalidCategoryError,
   InvalidLocationError,
   InvalidAttributesError,
+  UserBannedError,
 } from "@/lib/ads/create-ad";
 import { postAdLimiter } from "@/lib/rate-limit/ads";
 import { checkLimit } from "@/lib/rate-limit";
@@ -38,8 +39,14 @@ export async function POST(request: Request) {
 
   try {
     const adId = await createAd({ userId: authData.user.id, ...parsed.data });
-    return NextResponse.json({ id: adId, status: "draft" }, { status: 201 });
+    return NextResponse.json(
+      { id: adId, status: "pending_review" },
+      { status: 201 },
+    );
   } catch (error) {
+    if (error instanceof UserBannedError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     if (
       error instanceof InvalidCategoryError ||
       error instanceof InvalidLocationError
