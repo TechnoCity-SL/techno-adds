@@ -101,6 +101,20 @@ const categoryAttributeDefs: Record<string, AttrDef[]> = {
   other: [],
 };
 
+// Placeholder rate card (PLAN.md §10 durations) — prices are rough
+// order-of-magnitude guesses for the Sri Lankan classifieds market, not
+// researched numbers; the doc's own note says "tune after competitor
+// benchmarking." Safe to change any time since `orders.amountLkr` snapshots
+// the price paid at purchase time, not a live join back to this table.
+const listingProducts = [
+  { id: "top_ad_3d", code: "top_ad_3d", tier: "top", durationDays: 3, priceLkr: 300 },
+  { id: "top_ad_7d", code: "top_ad_7d", tier: "top", durationDays: 7, priceLkr: 600 },
+  { id: "top_ad_15d", code: "top_ad_15d", tier: "top", durationDays: 15, priceLkr: 1000 },
+  { id: "super_ad_7d", code: "super_ad_7d", tier: "super", durationDays: 7, priceLkr: 1200 },
+  { id: "super_ad_15d", code: "super_ad_15d", tier: "super", durationDays: 15, priceLkr: 2000 },
+  { id: "super_ad_30d", code: "super_ad_30d", tier: "super", durationDays: 30, priceLkr: 3500 },
+];
+
 async function main() {
   for (const category of categories) {
     await db
@@ -150,6 +164,21 @@ async function main() {
     }
   }
   console.log(`Seeded ${attrCount} category attributes`);
+
+  for (const product of listingProducts) {
+    await db
+      .insert(schema.listingProducts)
+      .values(product)
+      .onConflictDoUpdate({
+        target: schema.listingProducts.code,
+        set: {
+          tier: product.tier,
+          durationDays: product.durationDays,
+          priceLkr: product.priceLkr,
+        },
+      });
+  }
+  console.log(`Seeded ${listingProducts.length} listing products`);
 }
 
 try {

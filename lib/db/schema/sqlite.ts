@@ -229,3 +229,52 @@ export const reports = sqliteTable("reports", {
     .notNull()
     .default(sql`(unixepoch())`),
 });
+
+export const listingProducts = sqliteTable("listing_products", {
+  id: text("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  tier: text("tier").notNull(),
+  durationDays: integer("duration_days").notNull(),
+  priceLkr: real("price_lkr").notNull(),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export const orders = sqliteTable("orders", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  adId: text("ad_id").notNull(),
+  listingProductId: text("listing_product_id").notNull(),
+  amountLkr: real("amount_lkr").notNull(),
+  paymentMethod: text("payment_method").notNull(),
+  status: text("status").notNull().default("pending"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  paidAt: integer("paid_at", { mode: "timestamp" }),
+});
+
+export const paymentTransactions = sqliteTable("payment_transactions", {
+  id: text("id").primaryKey(),
+  orderId: text("order_id").notNull(),
+  provider: text("provider").notNull(),
+  providerPaymentId: text("provider_payment_id"),
+  statusCode: text("status_code"),
+  rawPayload: text("raw_payload").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export const bankTransferProofs = sqliteTable("bank_transfer_proofs", {
+  id: text("id").primaryKey(),
+  orderId: text("order_id").notNull(),
+  cloudinaryPublicId: text("cloudinary_public_id").notNull(),
+  reviewedByModeratorId: text("reviewed_by_moderator_id"),
+  reviewedAt: integer("reviewed_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});

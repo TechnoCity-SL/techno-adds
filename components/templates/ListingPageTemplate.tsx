@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AdCard } from "@/components/molecules/AdCard";
-import { listAds, type AdSort } from "@/lib/ads/list-ads";
+import { listAds, listFeaturedAds, type AdSort } from "@/lib/ads/list-ads";
 
 interface ListingPageTemplateProps {
   categoryId?: string;
@@ -29,13 +29,10 @@ export async function ListingPageTemplate({
   sort,
   basePath,
 }: ListingPageTemplateProps) {
-  const { ads, total, pageSize } = await listAds({
-    categoryId,
-    locationId,
-    query,
-    page,
-    sort,
-  });
+  const [{ ads, total, pageSize }, featuredAds] = await Promise.all([
+    listAds({ categoryId, locationId, query, page, sort }),
+    categoryId ? listFeaturedAds(categoryId) : Promise.resolve([]),
+  ]);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const qParam = query ? `&q=${encodeURIComponent(query)}` : "";
 
@@ -48,6 +45,17 @@ export async function ListingPageTemplate({
       <p className="text-muted-foreground mb-4 text-sm">
         {total} ad{total === 1 ? "" : "s"} found
       </p>
+
+      {featuredAds.length > 0 ? (
+        <div className="mb-6">
+          <h2 className="mb-2 text-sm font-semibold">👑 Featured</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {featuredAds.map((ad) => (
+              <AdCard key={ad.id} {...ad} />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mb-4 flex flex-wrap gap-2 text-sm">
         {(Object.keys(SORT_LABELS) as (keyof typeof SORT_LABELS)[]).map((s) => (

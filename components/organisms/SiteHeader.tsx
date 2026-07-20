@@ -11,6 +11,12 @@ export function SiteHeader() {
           </Link>
           <div className="flex items-center gap-2">
             <Link
+              href="/my-ads"
+              className="border-border rounded-md border px-3 py-2 text-sm font-medium"
+            >
+              My Ads
+            </Link>
+            <Link
               href="/messages"
               className="border-border rounded-md border px-3 py-2 text-sm font-medium"
             >

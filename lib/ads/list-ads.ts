@@ -35,6 +35,7 @@ export interface AdListItem {
   locationId: string;
   createdAt: Date;
   thumbnailPublicId: string | null;
+  listingTier: string;
 }
 
 interface AdRow {
@@ -47,6 +48,45 @@ interface AdRow {
   location_id: string;
   created_at: Date;
   thumbnail_public_id: string | null;
+  listing_tier: string;
+}
+
+/**
+ * Super Ad's "featured carousel" placement (PLAN.md §10) — a small row of
+ * currently-boosted-to-super ads in a category, shown above the main grid.
+ * No homepage exists yet to put a site-wide version of this on (app/page.tsx
+ * is still the default Next.js starter page, a separate not-yet-scheduled
+ * gap), so this is scoped to category listing pages only for now.
+ */
+export async function listFeaturedAds(
+  categoryId: string,
+  limit = 4,
+): Promise<AdListItem[]> {
+  const rows = (await db.execute(sql`
+    select a.id, a.title, a.price, a.is_negotiable, a.condition, a.category_id, a.location_id, a.created_at,
+      (select ai.cloudinary_public_id from ad_images ai where ai.ad_id = a.id order by ai.sort_order asc limit 1) as thumbnail_public_id,
+      a.listing_tier
+    from ads a
+    where a.status = 'active'
+      and a.category_id = ${categoryId}
+      and a.listing_tier = 'super'
+      and a.tier_expires_at > now()
+    order by a.tier_expires_at desc
+    limit ${limit}
+  `)) as unknown as AdRow[];
+
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    price: Number(r.price),
+    isNegotiable: r.is_negotiable,
+    condition: r.condition,
+    categoryId: r.category_id,
+    locationId: r.location_id,
+    createdAt: r.created_at,
+    thumbnailPublicId: r.thumbnail_public_id,
+    listingTier: r.listing_tier,
+  }));
 }
 
 export async function listAds(params: ListAdsParams): Promise<{
@@ -78,12 +118,26 @@ export async function listAds(params: ListAdsParams): Promise<{
     orderSql = sql`ts_rank(a.search_vector, websearch_to_tsquery('english', ${params.query})) desc`;
   }
 
+  // Boosted ads are pinned above standard results (PLAN.md §10), super above
+  // top, each group otherwise keeping the requested sort. Computed from
+  // tier_expires_at here rather than trusting listing_tier alone, so pinning
+  // stays correct even in the window between a boost actually expiring and
+  // the periodic tier-expiry job (lib/payments/expire-tiers.ts) getting
+  // around to demoting the column back to "standard".
+  const tierRankSql = sql`
+    case
+      when a.tier_expires_at > now() and a.listing_tier = 'super' then 0
+      when a.tier_expires_at > now() and a.listing_tier = 'top' then 1
+      else 2
+    end`;
+
   const rows = (await db.execute(sql`
     select a.id, a.title, a.price, a.is_negotiable, a.condition, a.category_id, a.location_id, a.created_at,
-      (select ai.cloudinary_public_id from ad_images ai where ai.ad_id = a.id order by ai.sort_order asc limit 1) as thumbnail_public_id
+      (select ai.cloudinary_public_id from ad_images ai where ai.ad_id = a.id order by ai.sort_order asc limit 1) as thumbnail_public_id,
+      case when a.tier_expires_at > now() then a.listing_tier else 'standard' end as listing_tier
     from ads a
     where ${whereSql}
-    order by ${orderSql}
+    order by ${tierRankSql}, ${orderSql}
     limit ${pageSize} offset ${offset}
   `)) as unknown as AdRow[];
 
@@ -105,6 +159,7 @@ export async function listAds(params: ListAdsParams): Promise<{
       locationId: r.location_id,
       createdAt: r.created_at,
       thumbnailPublicId: r.thumbnail_public_id,
+      listingTier: r.listing_tier,
     })),
     total,
     page,

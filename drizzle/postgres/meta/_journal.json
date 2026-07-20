@@ -141,6 +141,20 @@
       "when": 1784510730190,
       "tag": "0019_phase4_chat_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1784521491445,
+      "tag": "0020_left_mentor",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1784521523468,
+      "tag": "0021_phase6_monetization_rls",
+      "breakpoints": true
     }
   ]
 }

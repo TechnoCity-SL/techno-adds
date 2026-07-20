@@ -23,7 +23,7 @@ export async function listPendingAds() {
 
 export async function logModerationAction(
   moderatorId: string,
-  targetType: "ad" | "user",
+  targetType: "ad" | "user" | "order",
   targetId: string,
   action: string,
   reason?: string,

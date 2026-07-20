@@ -260,3 +260,76 @@ export const reports = pgTable("reports", {
     .notNull()
     .default(sql`now()`),
 });
+
+// Rate card (PLAN.md §10) — admin/service_role-managed reference data, same
+// pattern as categories/category_attributes. `code` is the stable key call
+// sites reference (e.g. "top_ad_7d"); `isActive` lets a product be retired
+// without deleting it out from under historical orders that reference it.
+export const listingProducts = pgTable("listing_products", {
+  id: text("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  tier: text("tier").notNull(),
+  durationDays: integer("duration_days").notNull(),
+  priceLkr: real("price_lkr").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
+
+// `amountLkr` snapshots the price at purchase time rather than joining back
+// to listing_products.priceLkr, since the rate card can change after an
+// order is placed and the order must keep its original, actually-paid amount.
+export const orders = pgTable("orders", {
+  id: text("id").primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  adId: text("ad_id")
+    .notNull()
+    .references(() => ads.id, { onDelete: "cascade" }),
+  listingProductId: text("listing_product_id")
+    .notNull()
+    .references(() => listingProducts.id),
+  amountLkr: real("amount_lkr").notNull(),
+  paymentMethod: text("payment_method").notNull(),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+});
+
+// PayHere-specific transaction log — `rawPayload` is a JSON-serialized string
+// (not jsonb, same portability reasoning as category_attributes.options) of
+// the full signed notify payload, kept for audit/debugging since it's the
+// only record of exactly what PayHere told us. Never exposed to any client
+// role (see the RLS migration) — this is server/webhook-only data.
+export const paymentTransactions = pgTable("payment_transactions", {
+  id: text("id").primaryKey(),
+  orderId: text("order_id")
+    .notNull()
+    .references(() => orders.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  providerPaymentId: text("provider_payment_id"),
+  statusCode: text("status_code"),
+  rawPayload: text("raw_payload").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
+
+export const bankTransferProofs = pgTable("bank_transfer_proofs", {
+  id: text("id").primaryKey(),
+  orderId: text("order_id")
+    .notNull()
+    .references(() => orders.id, { onDelete: "cascade" }),
+  cloudinaryPublicId: text("cloudinary_public_id").notNull(),
+  reviewedByModeratorId: uuid("reviewed_by_moderator_id").references(
+    () => users.id,
+  ),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
