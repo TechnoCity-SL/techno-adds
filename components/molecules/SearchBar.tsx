@@ -13,20 +13,27 @@ export function SearchBar({ initialQuery = "" }: { initialQuery?: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form onSubmit={handleSubmit} className="relative">
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        className="text-muted-foreground pointer-events-none absolute top-1/2 left-4 -translate-y-1/2"
+      >
+        <circle cx="11" cy="11" r="7" />
+        <path d="m21 21-4.3-4.3" />
+      </svg>
       <input
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search for anything..."
-        className="border-border flex-1 rounded-md border px-3 py-2.5 text-base"
+        className="bg-muted border-border focus:border-primary focus:ring-primary/30 h-12 w-full rounded-xl border pr-4 pl-12 text-base focus:ring-1 focus:outline-none"
       />
-      <button
-        type="submit"
-        className="bg-primary text-primary-foreground rounded-md px-4 py-2.5 text-sm font-medium"
-      >
-        Search
-      </button>
     </form>
   );
 }

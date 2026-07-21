@@ -39,31 +39,39 @@ export function ReportQueue({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <h2 className="mb-4 text-xl font-semibold">Reports</h2>
-      {error ? <p className="text-destructive mb-4 text-sm">{error}</p> : null}
+    <section className="bg-card border-border overflow-hidden rounded-2xl border shadow-sm">
+      <div className="border-border bg-muted/30 border-b px-5 py-4">
+        <h2 className="text-base font-bold">Reports</h2>
+      </div>
+
+      {error ? (
+        <p className="text-destructive px-5 pt-4 text-sm">{error}</p>
+      ) : null}
 
       {reports.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No pending reports.</p>
+        <p className="text-muted-foreground p-5 text-sm">No pending reports.</p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 p-4">
           {reports.map((report) => (
-            <li
+            <div
               key={report.id}
-              className="border-border flex flex-col gap-2 rounded-md border p-4 sm:flex-row sm:items-center sm:justify-between"
+              className="bg-destructive/5 border-destructive flex flex-col gap-2 rounded-r-xl border-l-4 p-4"
             >
-              <div>
-                <p className="text-muted-foreground text-xs uppercase">
-                  {report.targetType} · {report.targetId}
-                </p>
-                <p className="text-sm">{report.reason}</p>
-              </div>
-              <div className="flex gap-2">
+              <span className="bg-destructive w-fit rounded px-2 py-0.5 text-[9px] font-bold text-white uppercase">
+                {report.targetType}
+              </span>
+              <p className="text-muted-foreground text-xs">
+                Target: {report.targetId}
+              </p>
+              <p className="text-sm leading-relaxed italic">
+                &ldquo;{report.reason}&rdquo;
+              </p>
+              <div className="flex gap-2 pt-1">
                 <button
                   type="button"
                   disabled={pendingId === report.id}
                   onClick={() => act(report.id, "resolve")}
-                  className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
+                  className="bg-primary text-primary-foreground rounded-full px-3 py-1 text-xs font-bold disabled:opacity-50"
                 >
                   Resolve
                 </button>
@@ -71,15 +79,15 @@ export function ReportQueue({
                   type="button"
                   disabled={pendingId === report.id}
                   onClick={() => act(report.id, "dismiss")}
-                  className="border-border rounded-md border px-4 py-2 text-sm font-medium disabled:opacity-50"
+                  className="text-muted-foreground hover:bg-muted rounded-full px-3 py-1 text-xs font-bold transition-colors disabled:opacity-50"
                 >
                   Dismiss
                 </button>
               </div>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
-    </div>
+    </section>
   );
 }

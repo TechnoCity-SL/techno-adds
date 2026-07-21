@@ -65,8 +65,27 @@ export function BankTransferUpload({ orderId }: { orderId: string }) {
 
   return (
     <div>
-      <label className="border-border block cursor-pointer rounded-md border border-dashed px-4 py-6 text-center text-sm">
-        {uploading ? "Uploading..." : "Upload your transfer receipt"}
+      <label className="border-border hover:border-primary hover:bg-accent/40 group flex min-h-[160px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-all">
+        <svg
+          width="36"
+          height="36"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="text-muted-foreground group-hover:text-primary mb-2 transition-colors"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <path d="M17 8l-5-5-5 5M12 3v12" />
+        </svg>
+        <p className="text-sm font-semibold">
+          {uploading ? "Uploading..." : "Upload Transfer Receipt"}
+        </p>
+        <p className="text-muted-foreground mt-1 text-xs">
+          JPG or PNG (Max 5MB)
+        </p>
         <input
           type="file"
           accept="image/*"
@@ -76,7 +95,7 @@ export function BankTransferUpload({ orderId }: { orderId: string }) {
           className="hidden"
         />
       </label>
-      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-destructive mt-2 text-sm">{error}</p> : null}
     </div>
   );
 }

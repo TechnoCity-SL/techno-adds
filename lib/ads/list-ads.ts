@@ -23,6 +23,10 @@ export interface ListAdsParams {
   page?: number;
   pageSize?: number;
   sort?: AdSort;
+  minPrice?: number;
+  maxPrice?: number;
+  /** Matches lib/validation/ads.ts's createAdSchema condition enum. */
+  condition?: ("new" | "used")[];
 }
 
 export interface AdListItem {
@@ -33,6 +37,7 @@ export interface AdListItem {
   condition: string;
   categoryId: string;
   locationId: string;
+  locationName: string | null;
   createdAt: Date;
   thumbnailPublicId: string | null;
   listingTier: string;
@@ -46,9 +51,26 @@ interface AdRow {
   condition: string;
   category_id: string;
   location_id: string;
+  location_name: string | null;
   created_at: Date;
   thumbnail_public_id: string | null;
   listing_tier: string;
+}
+
+function mapRow(r: AdRow): AdListItem {
+  return {
+    id: r.id,
+    title: r.title,
+    price: Number(r.price),
+    isNegotiable: r.is_negotiable,
+    condition: r.condition,
+    categoryId: r.category_id,
+    locationId: r.location_id,
+    locationName: r.location_name,
+    createdAt: r.created_at,
+    thumbnailPublicId: r.thumbnail_public_id,
+    listingTier: r.listing_tier,
+  };
 }
 
 /**
@@ -59,34 +81,28 @@ interface AdRow {
  * gap), so this is scoped to category listing pages only for now.
  */
 export async function listFeaturedAds(
-  categoryId: string,
+  categoryId?: string,
   limit = 4,
 ): Promise<AdListItem[]> {
+  const categorySql = categoryId
+    ? sql`and a.category_id = ${categoryId}`
+    : sql``;
   const rows = (await db.execute(sql`
-    select a.id, a.title, a.price, a.is_negotiable, a.condition, a.category_id, a.location_id, a.created_at,
+    select a.id, a.title, a.price, a.is_negotiable, a.condition, a.category_id, a.location_id,
+      l.name as location_name, a.created_at,
       (select ai.cloudinary_public_id from ad_images ai where ai.ad_id = a.id order by ai.sort_order asc limit 1) as thumbnail_public_id,
       a.listing_tier
     from ads a
+    left join locations l on l.id = a.location_id
     where a.status = 'active'
-      and a.category_id = ${categoryId}
+      ${categorySql}
       and a.listing_tier = 'super'
       and a.tier_expires_at > now()
     order by a.tier_expires_at desc
     limit ${limit}
   `)) as unknown as AdRow[];
 
-  return rows.map((r) => ({
-    id: r.id,
-    title: r.title,
-    price: Number(r.price),
-    isNegotiable: r.is_negotiable,
-    condition: r.condition,
-    categoryId: r.category_id,
-    locationId: r.location_id,
-    createdAt: r.created_at,
-    thumbnailPublicId: r.thumbnail_public_id,
-    listingTier: r.listing_tier,
-  }));
+  return rows.map(mapRow);
 }
 
 export async function listAds(params: ListAdsParams): Promise<{
@@ -108,6 +124,18 @@ export async function listAds(params: ListAdsParams): Promise<{
     conditions.push(
       sql`a.search_vector @@ websearch_to_tsquery('english', ${params.query})`,
     );
+  if (params.minPrice !== undefined)
+    conditions.push(sql`a.price >= ${params.minPrice}`);
+  if (params.maxPrice !== undefined)
+    conditions.push(sql`a.price <= ${params.maxPrice}`);
+  if (params.condition && params.condition.length > 0) {
+    conditions.push(
+      sql`a.condition in (${sql.join(
+        params.condition.map((c) => sql`${c}`),
+        sql`, `,
+      )})`,
+    );
+  }
 
   const whereSql = sql.join(conditions, sql` and `);
 
@@ -132,10 +160,12 @@ export async function listAds(params: ListAdsParams): Promise<{
     end`;
 
   const rows = (await db.execute(sql`
-    select a.id, a.title, a.price, a.is_negotiable, a.condition, a.category_id, a.location_id, a.created_at,
+    select a.id, a.title, a.price, a.is_negotiable, a.condition, a.category_id, a.location_id,
+      l.name as location_name, a.created_at,
       (select ai.cloudinary_public_id from ad_images ai where ai.ad_id = a.id order by ai.sort_order asc limit 1) as thumbnail_public_id,
       case when a.tier_expires_at > now() then a.listing_tier else 'standard' end as listing_tier
     from ads a
+    left join locations l on l.id = a.location_id
     where ${whereSql}
     order by ${tierRankSql}, ${orderSql}
     limit ${pageSize} offset ${offset}
@@ -149,18 +179,7 @@ export async function listAds(params: ListAdsParams): Promise<{
   const total = Number(countRows[0]?.total ?? 0);
 
   return {
-    ads: rows.map((r) => ({
-      id: r.id,
-      title: r.title,
-      price: Number(r.price),
-      isNegotiable: r.is_negotiable,
-      condition: r.condition,
-      categoryId: r.category_id,
-      locationId: r.location_id,
-      createdAt: r.created_at,
-      thumbnailPublicId: r.thumbnail_public_id,
-      listingTier: r.listing_tier,
-    })),
+    ads: rows.map(mapRow),
     total,
     page,
     pageSize,

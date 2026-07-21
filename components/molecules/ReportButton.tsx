@@ -20,7 +20,11 @@ export function ReportButton({
   const [submitted, setSubmitted] = useState(false);
 
   if (submitted) {
-    return <p className="text-muted-foreground text-sm">Report submitted.</p>;
+    return (
+      <p className="text-muted-foreground text-xs font-medium">
+        Report submitted.
+      </p>
+    );
   }
 
   if (!open) {
@@ -34,9 +38,22 @@ export function ReportButton({
           }
           setOpen(true);
         }}
-        className="border-border rounded-md border px-4 py-2.5 text-sm font-medium"
+        className="text-muted-foreground hover:text-primary flex items-center gap-1 text-xs font-medium transition-colors"
       >
-        🚩 Report
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M12 9v4M12 17h.01" />
+          <path d="M10.29 3.86 1.82 18a1 1 0 0 0 .86 1.5h18.64a1 1 0 0 0 .86-1.5L13.71 3.86a1 1 0 0 0-1.72 0Z" />
+        </svg>
+        Report Ad
       </button>
     );
   }
@@ -68,14 +85,14 @@ export function ReportButton({
   }
 
   return (
-    <div className="border-border w-full rounded-md border p-3">
+    <div className="border-border bg-card w-full rounded-xl border p-3">
       <textarea
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         placeholder="Why are you reporting this?"
         maxLength={500}
         rows={3}
-        className="border-border w-full rounded-md border px-3 py-2 text-sm"
+        className="border-border w-full rounded-lg border px-3 py-2 text-sm"
       />
       {error ? <p className="mt-1 text-sm text-red-600">{error}</p> : null}
       <div className="mt-2 flex gap-2">
@@ -83,7 +100,7 @@ export function ReportButton({
           type="button"
           onClick={submit}
           disabled={pending}
-          className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
+          className="bg-primary text-primary-foreground rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50"
         >
           {pending ? "Submitting..." : "Submit report"}
         </button>
@@ -91,7 +108,7 @@ export function ReportButton({
           type="button"
           onClick={() => setOpen(false)}
           disabled={pending}
-          className="border-border rounded-md border px-4 py-2 text-sm font-medium disabled:opacity-50"
+          className="border-border rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50"
         >
           Cancel
         </button>

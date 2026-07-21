@@ -15,7 +15,8 @@
     "db:studio:sqlite": "drizzle-kit studio --config=drizzle.config.sqlite.ts",
     "db:generate:pg": "drizzle-kit generate --config=drizzle.config.postgres.ts",
     "db:migrate:pg": "drizzle-kit migrate --config=drizzle.config.postgres.ts",
-    "db:seed": "tsx scripts/seed.mts"
+    "db:seed": "tsx scripts/seed.mts",
+    "db:seed-dummy-ads": "tsx --env-file=.env.local scripts/seed-dummy-ads.mts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

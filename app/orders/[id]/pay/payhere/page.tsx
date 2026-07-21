@@ -70,24 +70,53 @@ export default async function PayHereCheckoutPage({
   });
 
   return (
-    <div className="mx-auto max-w-md px-4 py-10 text-center">
-      <h1 className="mb-2 text-lg font-semibold">Ready to pay with PayHere</h1>
-      <p className="text-muted-foreground mb-6 text-sm">
-        Rs. {detail.order.amountLkr.toLocaleString()} for{" "}
-        {detail.product.tier === "super" ? "Super Ad" : "Top Ad"} (
-        {detail.product.durationDays} days)
-      </p>
-      <form method="post" action={checkout.action}>
-        {Object.entries(checkout.fields).map(([key, value]) => (
-          <input key={key} type="hidden" name={key} value={value} />
-        ))}
-        <button
-          type="submit"
-          className="bg-primary text-primary-foreground w-full rounded-md px-4 py-2.5 text-sm font-medium"
-        >
-          Proceed to PayHere
-        </button>
-      </form>
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="bg-card border-border w-full max-w-md rounded-2xl border p-8 text-center shadow-lg">
+        <div className="bg-accent text-primary mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full">
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="1" y="4" width="22" height="16" rx="2" />
+            <path d="M1 10h22" />
+          </svg>
+        </div>
+        <h1 className="text-xl font-bold">Ready to pay with PayHere</h1>
+        <p className="text-muted-foreground mt-2 mb-8 text-sm">
+          Rs. {detail.order.amountLkr.toLocaleString()} for{" "}
+          {detail.product.tier === "super" ? "Super Ad" : "Top Ad"} (
+          {detail.product.durationDays} days)
+        </p>
+        <form method="post" action={checkout.action}>
+          {Object.entries(checkout.fields).map(([key, value]) => (
+            <input key={key} type="hidden" name={key} value={value} />
+          ))}
+          <button
+            type="submit"
+            className="bg-primary text-primary-foreground flex h-14 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold shadow-md transition-transform active:scale-95"
+          >
+            Proceed to PayHere
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

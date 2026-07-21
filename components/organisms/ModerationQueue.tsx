@@ -36,22 +36,34 @@ export function ModerationQueue({ initialAds }: { initialAds: PendingAd[] }) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="mb-4 text-xl font-semibold">Moderation Queue</h1>
-      {error ? <p className="text-destructive mb-4 text-sm">{error}</p> : null}
+    <section className="bg-card border-border overflow-hidden rounded-2xl border shadow-sm">
+      <div className="border-border bg-muted/30 flex items-center justify-between border-b px-5 py-4">
+        <h2 className="text-base font-bold">Pending Ads Queue</h2>
+        {ads.length > 0 ? (
+          <span className="bg-primary text-primary-foreground rounded-full px-3 py-1 text-[10px] font-bold">
+            {ads.length} pending
+          </span>
+        ) : null}
+      </div>
+
+      {error ? (
+        <p className="text-destructive px-5 pt-4 text-sm">{error}</p>
+      ) : null}
 
       {ads.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No ads pending review.</p>
+        <p className="text-muted-foreground p-5 text-sm">
+          No ads pending review.
+        </p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="divide-border divide-y">
           {ads.map((ad) => (
             <li
               key={ad.id}
-              className="border-border flex flex-col gap-2 rounded-md border p-4 sm:flex-row sm:items-center sm:justify-between"
+              className="hover:bg-muted/50 flex flex-col gap-3 px-5 py-4 transition-colors sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <p className="font-medium">{ad.title}</p>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm font-bold">{ad.title}</p>
+                <p className="text-primary text-sm font-semibold">
                   Rs. {ad.price.toLocaleString()}
                 </p>
               </div>
@@ -59,24 +71,48 @@ export function ModerationQueue({ initialAds }: { initialAds: PendingAd[] }) {
                 <button
                   type="button"
                   disabled={pendingId === ad.id}
-                  onClick={() => moderate(ad.id, "approve")}
-                  className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
+                  onClick={() => moderate(ad.id, "reject")}
+                  className="text-destructive hover:bg-destructive/10 flex h-9 w-9 items-center justify-center rounded-lg transition-colors disabled:opacity-50"
+                  title="Reject"
                 >
-                  Approve
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
                 </button>
                 <button
                   type="button"
                   disabled={pendingId === ad.id}
-                  onClick={() => moderate(ad.id, "reject")}
-                  className="border-destructive text-destructive rounded-md border px-4 py-2 text-sm font-medium disabled:opacity-50"
+                  onClick={() => moderate(ad.id, "approve")}
+                  className="bg-accent text-primary hover:bg-primary hover:text-primary-foreground flex h-9 w-9 items-center justify-center rounded-lg transition-colors disabled:opacity-50"
+                  title="Approve"
                 >
-                  Reject
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
                 </button>
               </div>
             </li>
           ))}
         </ul>
       )}
-    </div>
+    </section>
   );
 }

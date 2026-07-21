@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db/postgres-client";
 import { ListingPageTemplate } from "@/components/templates/ListingPageTemplate";
+import { listingFiltersSchema } from "@/lib/validation/ads";
 import type { AdSort } from "@/lib/ads/list-ads";
 
 export const revalidate = 60;
@@ -11,10 +12,18 @@ export default async function CategoryPage({
   searchParams,
 }: {
   params: Promise<{ categorySlug: string }>;
-  searchParams: Promise<{ page?: string; sort?: string; q?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    sort?: string;
+    q?: string;
+    minPrice?: string;
+    maxPrice?: string;
+    condition?: string | string[];
+  }>;
 }) {
   const { categorySlug } = await params;
   const sp = await searchParams;
+  const filters = listingFiltersSchema.parse(sp);
 
   const [category] = await db
     .select()
@@ -30,6 +39,9 @@ export default async function CategoryPage({
       page={Number(sp.page) || 1}
       sort={(sp.sort as AdSort) || "newest"}
       basePath={`/${categorySlug}`}
+      minPrice={filters.minPrice}
+      maxPrice={filters.maxPrice}
+      condition={filters.condition}
     />
   );
 }

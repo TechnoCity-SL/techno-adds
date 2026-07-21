@@ -44,23 +44,28 @@ export function OrderReviewQueue({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <h2 className="mb-4 text-xl font-semibold">Bank Transfer Payments</h2>
-      {error ? <p className="text-destructive mb-4 text-sm">{error}</p> : null}
+    <section className="bg-card border-border overflow-hidden rounded-2xl border shadow-sm">
+      <div className="border-border bg-muted/30 border-b px-5 py-4">
+        <h2 className="text-base font-bold">Bank Transfer Payments</h2>
+      </div>
+
+      {error ? (
+        <p className="text-destructive px-5 pt-4 text-sm">{error}</p>
+      ) : null}
 
       {orders.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
+        <p className="text-muted-foreground p-5 text-sm">
           No payments awaiting confirmation.
         </p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 p-4">
           {orders.map((o) => (
-            <li
+            <div
               key={o.id}
-              className="border-border flex flex-col gap-3 rounded-md border p-4 sm:flex-row sm:items-center sm:justify-between"
+              className="border-border flex flex-col gap-3 rounded-xl border p-3"
             >
               <div className="flex items-center gap-3">
-                <div className="bg-muted relative h-16 w-16 shrink-0 overflow-hidden rounded-md">
+                <div className="bg-muted relative h-16 w-16 shrink-0 overflow-hidden rounded-lg">
                   <Image
                     src={o.receiptUrl}
                     alt="Transfer receipt"
@@ -69,11 +74,14 @@ export function OrderReviewQueue({
                     sizes="64px"
                   />
                 </div>
-                <div>
-                  <p className="font-medium">{o.adTitle}</p>
-                  <p className="text-muted-foreground text-sm">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold">{o.adTitle}</p>
+                  <p className="text-muted-foreground text-xs">
                     {o.tier === "super" ? "Super Ad" : "Top Ad"} (
-                    {o.durationDays}d) · Rs. {o.amountLkr.toLocaleString()}
+                    {o.durationDays}d)
+                  </p>
+                  <p className="text-primary text-sm font-semibold">
+                    Rs. {o.amountLkr.toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -82,7 +90,7 @@ export function OrderReviewQueue({
                   type="button"
                   disabled={pendingId === o.id}
                   onClick={() => act(o.id, "approve")}
-                  className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
+                  className="bg-primary text-primary-foreground flex-1 rounded-lg py-2 text-xs font-bold disabled:opacity-50"
                 >
                   Approve
                 </button>
@@ -90,15 +98,15 @@ export function OrderReviewQueue({
                   type="button"
                   disabled={pendingId === o.id}
                   onClick={() => act(o.id, "reject")}
-                  className="border-destructive text-destructive rounded-md border px-4 py-2 text-sm font-medium disabled:opacity-50"
+                  className="border-destructive text-destructive flex-1 rounded-lg border py-2 text-xs font-bold disabled:opacity-50"
                 >
                   Reject
                 </button>
               </div>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
-    </div>
+    </section>
   );
 }

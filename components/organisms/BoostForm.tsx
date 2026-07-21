@@ -11,6 +11,24 @@ interface Product {
   priceLkr: number;
 }
 
+const TIER_META: Record<
+  string,
+  { label: string; description: string; iconClassName: string }
+> = {
+  top: {
+    label: "Top Ad",
+    description:
+      "Your ad stays at the top of search results for the chosen duration.",
+    iconClassName: "text-tier-top",
+  },
+  super: {
+    label: "Super Ad",
+    description:
+      "Highlight your ad with a distinctive badge and premium placement.",
+    iconClassName: "text-tier-super",
+  },
+};
+
 export function BoostForm({
   adId,
   products,
@@ -25,6 +43,9 @@ export function BoostForm({
   >("payhere");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const selectedProduct = products.find((p) => p.id === productId);
+  const tiers = Array.from(new Set(products.map((p) => p.tier)));
 
   async function submit() {
     if (!productId) return;
@@ -60,82 +81,164 @@ export function BoostForm({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <p className="mb-2 text-sm font-medium">Placement</p>
-        <div className="flex flex-col gap-2">
-          {products.map((p) => (
-            <label
-              key={p.id}
-              className={`border-border flex cursor-pointer items-center justify-between rounded-md border px-3 py-2.5 text-sm ${
-                productId === p.id ? "border-primary" : ""
-              }`}
+    <div className="flex flex-col gap-8">
+      {tiers.map((tier) => {
+        const meta = TIER_META[tier] ?? {
+          label: tier,
+          description: "",
+          iconClassName: "text-primary",
+        };
+        return (
+          <section key={tier}>
+            <div className="mb-3 flex items-center gap-2">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className={meta.iconClassName}
+              >
+                <path d="M12 2 4 5v6c0 5 3.5 8.5 8 11 4.5-2.5 8-6 8-11V5l-8-3Z" />
+              </svg>
+              <h2 className="text-lg font-bold">{meta.label}</h2>
+            </div>
+            <p className="text-muted-foreground mb-3 text-sm">
+              {meta.description}
+            </p>
+            <div className="flex flex-col gap-2">
+              {products
+                .filter((p) => p.tier === tier)
+                .map((p) => (
+                  <label
+                    key={p.id}
+                    className={`bg-card flex cursor-pointer items-center justify-between rounded-xl border-2 p-4 transition-all active:scale-[0.98] ${
+                      productId === p.id
+                        ? "border-primary bg-accent"
+                        : "border-border"
+                    }`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="product"
+                        value={p.id}
+                        checked={productId === p.id}
+                        onChange={() => setProductId(p.id)}
+                        className="text-primary h-5 w-5"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold">
+                          {p.durationDays} Days Promotion
+                        </span>
+                      </span>
+                    </span>
+                    <span className="text-primary font-bold">
+                      Rs. {p.priceLkr.toLocaleString()}
+                    </span>
+                  </label>
+                ))}
+            </div>
+          </section>
+        );
+      })}
+
+      <section>
+        <h2 className="mb-3 text-lg font-bold">Payment Method</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setPaymentMethod("payhere")}
+            className={`bg-card flex flex-col items-start gap-2 rounded-xl border-2 p-4 text-left transition-all ${
+              paymentMethod === "payhere"
+                ? "border-primary bg-accent"
+                : "border-border"
+            }`}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-primary"
             >
-              <span className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="product"
-                  value={p.id}
-                  checked={productId === p.id}
-                  onChange={() => setProductId(p.id)}
-                />
-                {p.tier === "super" ? "Super Ad" : "Top Ad"} — {p.durationDays}{" "}
-                days
+              <rect x="1" y="4" width="22" height="16" rx="2" />
+              <path d="M1 10h22" />
+            </svg>
+            <span>
+              <span className="block text-sm font-semibold">Card / Wallet</span>
+              <span className="text-muted-foreground block text-xs">
+                PayHere Secure
               </span>
-              <span className="font-medium">
-                Rs. {p.priceLkr.toLocaleString()}
-              </span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <p className="mb-2 text-sm font-medium">Payment method</p>
-        <div className="flex gap-2">
-          <label
-            className={`border-border flex-1 cursor-pointer rounded-md border px-3 py-2.5 text-center text-sm ${
-              paymentMethod === "payhere" ? "border-primary" : ""
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPaymentMethod("bank_transfer")}
+            className={`bg-card flex flex-col items-start gap-2 rounded-xl border-2 p-4 text-left transition-all ${
+              paymentMethod === "bank_transfer"
+                ? "border-primary bg-accent"
+                : "border-border"
             }`}
           >
-            <input
-              type="radio"
-              name="method"
-              className="sr-only"
-              value="payhere"
-              checked={paymentMethod === "payhere"}
-              onChange={() => setPaymentMethod("payhere")}
-            />
-            Card / Wallet (PayHere)
-          </label>
-          <label
-            className={`border-border flex-1 cursor-pointer rounded-md border px-3 py-2.5 text-center text-sm ${
-              paymentMethod === "bank_transfer" ? "border-primary" : ""
-            }`}
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-muted-foreground"
+            >
+              <path d="M3 21h18M4 10h16M12 3 3 8h18ZM6 10v8M10 10v8M14 10v8M18 10v8" />
+            </svg>
+            <span>
+              <span className="block text-sm font-semibold">Bank Transfer</span>
+              <span className="text-muted-foreground block text-xs">
+                Manual Verification
+              </span>
+            </span>
+          </button>
+        </div>
+      </section>
+
+      {error ? <p className="text-destructive text-sm">{error}</p> : null}
+
+      <div className="border-border bg-card fixed right-0 bottom-0 left-0 border-t px-4 py-3">
+        <div className="mx-auto flex max-w-xl flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground text-sm">Total Amount:</span>
+            <span className="text-primary text-lg font-bold">
+              Rs. {(selectedProduct?.priceLkr ?? 0).toLocaleString()}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={pending || !productId}
+            className="bg-primary text-primary-foreground flex h-14 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50"
           >
-            <input
-              type="radio"
-              name="method"
-              className="sr-only"
-              value="bank_transfer"
-              checked={paymentMethod === "bank_transfer"}
-              onChange={() => setPaymentMethod("bank_transfer")}
-            />
-            Bank Transfer
-          </label>
+            {pending ? "Creating order..." : "Continue to Payment"}
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
       </div>
-
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
-
-      <button
-        type="button"
-        onClick={submit}
-        disabled={pending || !productId}
-        className="bg-primary text-primary-foreground rounded-md px-4 py-2.5 text-sm font-medium disabled:opacity-50"
-      >
-        {pending ? "Creating order..." : "Continue to payment"}
-      </button>
     </div>
   );
 }

@@ -45,16 +45,28 @@ export function MessageSellerButton({
   }
 
   return (
-    <div>
+    <div className="flex-1">
       <button
         type="button"
         onClick={startConversation}
         disabled={pending}
-        className="border-border rounded-md border px-4 py-2.5 text-sm font-medium disabled:opacity-50"
+        className="bg-secondary text-secondary-foreground flex h-[52px] w-full items-center justify-center gap-2 rounded-xl text-sm font-bold transition-transform active:scale-95 disabled:opacity-50"
       >
-        {pending ? "Starting..." : "💬 Message Seller"}
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+        {pending ? "Starting..." : "Message"}
       </button>
-      {error ? <p className="mt-1 text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-destructive mt-1 text-xs">{error}</p> : null}
     </div>
   );
 }
